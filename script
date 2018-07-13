@@ -1,0 +1,27 @@
+#!/bin/bash
+
+#Uncomment if you want verbose
+set -x
+
+# Generate pkcs12 cert from LE output
+docker exec -i unifi openssl pkcs12 -export -in /cert/fullchain1.pem -inkey \
+/cert/privkey1.pem \
+-out /config/data/unifi.p12 -name unifi -password pass:aircontrolenterprise
+
+# Backup current keystore
+docker exec -i unifi cp /config/data/keystore /config/data/keystore.backup
+ 
+ # Generate Java Keystore
+docker exec -i unifi keytool -importkeystore -srckeystore /config/data/unifi.p12 \
+-srcstoretype PKCS12 -srcstorepass aircontrolenterprise -destkeystore \
+/config/data/keystore -storepass aircontrolenterprise -deststoretype pkcs12
+ 
+# Verify Java Keystore
+#docker exec -i unifi keytool -list -v -keystore /config/data/keystore
+ 
+# Install certificate on UniFi Controller
+docker exec -i unifi keytool -importkeystore -deststorepass aircontrolenterprise -destkeypass aircontrolenterprise -destkeystore /config/data/keystore -srckeystore /config/data/unifi.p12 -srcstoretype PKCS12 -srcstorepass aircontrolenterprise -alias unifi -noprompt
+
+# Restart unifi
+#docker exec -i unifi /etc/init.d/unifi restart
+docker restart unifi
